@@ -23,14 +23,14 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\api.cc" />
-    <ClCompile Include="src\hook.cc" />
-    <ClCompile Include="src\MemoryModule.c" />
-    <ClCompile Include="src\module.cc" />
-    <ClCompile Include="src\shared.cc" />
+    <ClCompile Include="..\src\api.cc" />
+    <ClCompile Include="..\src\hook.cc" />
+    <ClCompile Include="..\src\MemoryModule.c" />
+    <ClCompile Include="..\src\module.cc" />
+    <ClCompile Include="..\src\shared.cc" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\MemoryModule.h" />
+    <ClInclude Include="..\src\MemoryModule.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>

@@ -11,24 +11,24 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\api.cc">
+    <ClCompile Include="..\src\api.cc">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\MemoryModule.c">
+    <ClCompile Include="..\src\hook.cc">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\module.cc">
+    <ClCompile Include="..\src\MemoryModule.c">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\shared.cc">
+    <ClCompile Include="..\src\module.cc">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\hook.cc">
+    <ClCompile Include="..\src\shared.cc">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\MemoryModule.h">
+    <ClInclude Include="..\src\MemoryModule.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
