@@ -13,8 +13,8 @@ Download the latest [release](https://github.com/nomi-san/true-autoit-multi-thre
 
 Library files:
 - N.au3 - AutoIt include file
-- N.dll - dynamic library
-- N64.dll - for 64-bit
+- N.dll - DLL dependency
+- N64.dll - for 64-bit AutoIt (optional if 32-bit)
 
 Simple example:
 ```au3
@@ -39,10 +39,13 @@ NMain('main')
 ## warning
 This is just an experiment.
 
-## how it works?
-Please see the C++ source code, I'll update soon 😀
-
 ## FAQs
+
+#### How it works?
+Please see the C++ source code, I'll update soon 😀.
+
+#### Does it work with compiled EXE.
+Yep, it's designed for both running script in AutoIt.exe and compiled (also upx packed) EXE.
 
 #### Memory leaks after threads done?
 After the first thread is created, the memory increases once ~EXE size. And +80kB after each thread done, that isn't memory leaks, they are static members/smart pointers of AutoIt interpreter still alive. They will be freed when process exits.
