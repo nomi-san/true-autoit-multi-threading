@@ -34,6 +34,7 @@ NMain('main')
 ```
 
 #### See [test_1.au3](./test_1.au3) and [test_2.au3](./test_2.au3) to learn more.
+#### See [N.au3](./N.au3) to get all APIs.
 
 ## warning
 This is just an experiment.
@@ -48,6 +49,9 @@ After the first thread is created, the memory increases once ~EXE size. And +80k
 
 #### Is its shared object faster than AutoItObject?
 Yesh, it is implemented with hash table. I don't know why AutoItObject lookups property name through array sequentially.
+
+#### Why "N" library?
+It isn't someone nickname, it's just the first letter I think to.
 
 #### Is there a magic?
 Nope.
