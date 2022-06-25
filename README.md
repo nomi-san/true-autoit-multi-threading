@@ -1,6 +1,12 @@
 # true-autoit-multi-threading
 Yep, multi-threading in AutoIt.
 
+<br>
+
+> All issues and pull requests are welcome!
+
+<br>
+
 ## usage
 
 Download the latest [release](https://github.com/nomi-san/true-autoit-multi-threading/releases) (or build from source with Visual Studio C++).
@@ -34,3 +40,14 @@ This is just an experiment.
 
 ## how it works?
 Please see the C++ source code, I'll update soon 😀
+
+## FAQs
+
+#### Memory leaks after threads done?
+After the first thread is created, the memory increases once ~EXE size. And +80kB after each thread done, that isn't memory leaks, they are static members/smart pointers of AutoIt interpreter still alive. They will be freed when process exits.
+
+#### Is its shared object faster than AutoItObject?
+Yesh, it is implemented with hash table. I don't know why AutoItObject lookups property name through array sequentially.
+
+#### Is there a magic?
+Nope.
