@@ -59,7 +59,7 @@ DWORD WINAPI NAPI_Run(LPCSTR fn, LPDISPATCH local)
     thread->handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)N_ThreadRoutine, (LPVOID)thread, CREATE_SUSPENDED, &id);
 
     // Insert to map and resume it.
-    g_threadMap.insert_or_assign(id, thread);
+    g_threadMap[id] = thread;
     ResumeThread(thread->handle);
 
     return id;
@@ -87,7 +87,7 @@ void WINAPI NAPI_PrepMain()
 LPDISPATCH WINAPI NAPI_PrepSub(LPSTR fn)
 {
     DWORD tid = GetCurrentThreadId();
-    Thread *thread = g_threadMap.at(tid);
+    Thread *thread = g_threadMap[tid];
 
     // Retrieve sub-thread function name and local shared.
     lstrcpyA(fn, thread->func);
@@ -101,14 +101,14 @@ BOOL N_ShouldExit()
     if (GetCurrentThreadId() != g_mainThreadId)
     {
         DWORD id = GetCurrentThreadId();
-        Thread *thread = g_threadMap.at(id);
+        Thread *thread = g_threadMap[id];
         HANDLE handle = thread->handle;
 
         // Free module.
         MemoryFreeLibrary(thread->module);
 
         // Remove thread from map.
-        g_threadMap.erase(id);
+        g_threadMap[id] = nullptr;
         delete thread;
 
         // Should terminate this thread to prevent unexpected behavior.
@@ -121,8 +121,9 @@ BOOL N_ShouldExit()
 
 void WINAPI NAPI_Wait(DWORD tid)
 {
-    Thread *thread = g_threadMap.at(tid);
-    WaitForSingleObject(thread->handle, INFINITE);
+    Thread *thread = g_threadMap[tid];
+    if (thread != nullptr)
+        WaitForSingleObject(thread->handle, INFINITE);
 }
 
 void WINAPI NAPI_WaitAll()
@@ -133,8 +134,11 @@ void WINAPI NAPI_WaitAll()
     int i = 0;
     for (const auto &pair : g_threadMap)
     {
-        handles[i++] = pair.second->handle;
+        if (pair.second != nullptr)
+            handles[i++] = pair.second->handle;
     }
+
+    if (i == 0) return;
 
     WaitForMultipleObjects(count, handles, TRUE, INFINITE);
     delete[] handles;
