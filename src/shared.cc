@@ -1,3 +1,4 @@
+#include <atomic>
 #include <windows.h>
 
 // Simple shared object,
@@ -11,7 +12,7 @@ class Entry
 {
 public:
     const UINT32 Key = 0;
-    const VARIANT Value = { VT_NULL };
+    const VARIANT Value = { VT_EMPTY };
 
     ~Entry()
     {
@@ -24,19 +25,19 @@ public:
         VariantCopy(const_cast<VARIANT *>(&Value), value);
     }
 
-    bool IsNull() const
+    bool IsEmpty() const
     {
-        return Value.vt == VT_NULL;
+        return Value.vt == VT_EMPTY;
     }
 };
 
 class Shared : public IDispatch
 {
-    ULONG m_ref = 0;
     Entry *m_entries;
     int m_count, m_capacity;
+    std::atomic<int> m_ref;
 
-    static constexpr VARIANT Null = { VT_NULL };
+    static constexpr VARIANT Empty = { VT_EMPTY };
 
     // FNV-1a 32
     static UINT32 FnvHash(LPCWSTR key, UINT length)
@@ -55,6 +56,8 @@ class Shared : public IDispatch
 public:
     Shared()
     {
+        m_ref = 0;
+
         m_count = 0;
         m_capacity = 0;
         m_entries = nullptr;
@@ -115,7 +118,7 @@ public:
 
     HRESULT STDMETHODCALLTYPE GetIDsOfNames(const IID &riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId) override
     {
-        *rgDispId = FnvHash(*rgszNames, cNames);
+        *rgDispId = FnvHash(*rgszNames, lstrlenW(*rgszNames));
         return S_OK;
     }
 
@@ -149,7 +152,7 @@ private:
             }
         }
 
-        VariantCopy(value, &Null);
+        VariantCopy(value, &Empty);
     }
 
     void Set(UINT32 key, const VARIANT *value)
@@ -162,7 +165,7 @@ private:
         Entry *entry = FindEntry(m_entries, m_capacity, key);
 
         bool isNewKey = entry->Key == 0;
-        if (isNewKey && entry->IsNull())
+        if (isNewKey && entry->IsEmpty())
         {
             m_count++;
         }
@@ -182,7 +185,7 @@ private:
 
             if (entry->Key == 0)
             {
-                if (entry->IsNull())
+                if (entry->IsEmpty())
                 {
                     return tombstone != nullptr ? tombstone : entry;
                 }
