@@ -58,3 +58,6 @@ It isn't someone nickname, it's just the first letter I think to.
 
 #### Is there a magic?
 Nope.
+
+#### Thread safe?
+Not implemented yet.
