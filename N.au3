@@ -1,7 +1,11 @@
 ; Author: nomi-san (wuuyi123@gmail.com)
 ; Github: https://github.com/nomi-san/true-autoit-multi-threading
 
-local $__nMod = DllCall('kernel32.dll', 'handle', 'LoadLibraryW', 'wstr', @AutoItX64 ? 'N64.dll' : 'N.dll')[0]
+#include-once
+
+local $__nDll = @AutoItX64 ? 'N64.dll' : 'N.dll'
+local $__nMod = DllCall('kernel32.dll', 'handle', 'GetModuleHandleW', 'wstr', $__nDll)[0]
+if not $__nMod then $__nMod = DllCall('kernel32.dll', 'handle', 'LoadLibraryW', 'wstr', $__nDll)[0]
 
 local $__nPfn_Global 	= __n_GetProc(101)
 local $__nPfn_Local 	= __n_GetProc(102)
