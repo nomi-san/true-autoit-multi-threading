@@ -46,7 +46,7 @@ func NMain($ep)
 		local $s = DllStructCreate('char[64];')
 		local $l = DllCallAddress('idispatch', $__nPfn_PrepSub, 'ptr', DllStructGetPtr($s, 1))[0]
 		local $fn = DllStructGetData($s, 1)
-		Call(IsFunc($fn) ? FuncName($fn) : $fn, $l)
+		Call($fn, $l)
 	endif
 endfunc
 
