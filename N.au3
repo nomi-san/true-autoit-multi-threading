@@ -28,7 +28,7 @@ endfunc
 
 ; Run a function in new thread.
 func NRun($fn, $o = null)
-	return DllCallAddress('dword', $__nPfn_Run, 'str', $fn, 'ptr',  $o)[0]
+	return DllCallAddress('dword', $__nPfn_Run, 'str', IsFunc($fn) ? FuncName($fn) : $fn, 'ptr',  $o)[0]
 endfunc
 
 ; Check if running thread is main.
@@ -40,7 +40,7 @@ endfunc
 func NMain($ep)
 	if NIsMain() then
 		DllCallAddress('none', $__nPfn_PrepMain)
-		Call($ep)
+		Call(IsFunc($ep) ? FuncName($ep) : $ep)
 	else
 		; Retrieve function name and local.
 		local $s = DllStructCreate('char[64];')
