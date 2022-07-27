@@ -1,11 +1,7 @@
 ; Author: nomi-san (wuuyi123@gmail.com)
 ; Github: https://github.com/nomi-san/true-autoit-multi-threading
-
-#include-once
-
-local $__nDll = @AutoItX64 ? 'N64.dll' : 'N.dll'
-local $__nMod = DllCall('kernel32.dll', 'handle', 'GetModuleHandleW', 'wstr', $__nDll)[0]
-if not $__nMod then $__nMod = DllCall('kernel32.dll', 'handle', 'LoadLibraryW', 'wstr', $__nDll)[0]
+Local $KERNEL32DLL = "kernel32.dll"
+local $__nMod = DllCall($KERNEL32DLL, 'handle', 'LoadLibraryW', 'wstr', @AutoItX64 ? 'N64.dll' : 'N.dll')[0]
 
 local $__nPfn_Global 	= __n_GetProc(101)
 local $__nPfn_Local 	= __n_GetProc(102)
@@ -28,7 +24,8 @@ endfunc
 
 ; Run a function in new thread.
 func NRun($fn, $o = null)
-	return DllCallAddress('dword', $__nPfn_Run, 'str', IsFunc($fn) ? FuncName($fn) : $fn, 'ptr',  $o)[0]
+	$IDId = DllCallAddress('dword', $__nPfn_Run, 'str', $fn, 'ptr',  $o)[0]
+	return $IDId
 endfunc
 
 ; Check if running thread is main.
@@ -40,7 +37,7 @@ endfunc
 func NMain($ep)
 	if NIsMain() then
 		DllCallAddress('none', $__nPfn_PrepMain)
-		Call(IsFunc($ep) ? FuncName($ep) : $ep)
+		Call($ep)
 	else
 		; Retrieve function name and local.
 		local $s = DllStructCreate('char[64];')
@@ -62,10 +59,52 @@ endfunc
 
 ; Get current thread ID.
 func NGetId()
-	return DllCall('kernel32.dll', 'dword', 'GetCurrentThreadId')[0]
+	return DllCall($KERNEL32DLL, 'dword', 'GetCurrentThreadId')[0]
 endfunc
 
 ; Internal function.
 func __n_GetProc($i)
-	return DllCall('kernel32.dll', 'ptr', 'GetProcAddress', 'handle', $__nMod, 'ptr', Ptr($i))[0]
+	return DllCall($KERNEL32DLL, 'ptr', 'GetProcAddress', 'handle', $__nMod, 'ptr', Ptr($i))[0]
 endfunc
+
+Func NTerminate($ThreadID)
+	$hThread = _ThreadOpen($ThreadID,0x0001)
+	If @error Then Return SetError(3,0,0)
+	_ThreadTerminate($hThread)
+	If @error Then Return SetError(3,0,0)
+
+	_ThreadCloseHandle($hThread)
+
+	Return True
+EndFunc
+
+
+Func _ThreadOpen($iThreadID,$iAccess,$bInheritHandle = False)
+	Local $aRet
+	; Special 'get current Thread handle' request? [Full access is implied, and no inheritance - this is a 'pseudo-handle']
+	If $iThreadID = -1 Then
+		$aRet=DllCall($KERNEL32DLL,"handle","GetCurrentThread")	; usually the constant -2, but we're keeping it future-OS compatible this way
+	Else
+		$aRet=DllCall($KERNEL32DLL,"handle","OpenThread","dword",$iAccess,"bool",$bInheritHandle,"dword",$iThreadID)
+	EndIf
+	If @error Then Return SetError(2,@error,0)
+	If Not $aRet[0] Then Return SetError(3,0,0)	; 0 = failed!
+	Return $aRet[0]
+EndFunc
+
+Func _ThreadTerminate($hThread,$iExitCode=0)
+	If Not IsPtr($hThread) Then Return SetError(1,0,False)
+	Local $aRet=DllCall($KERNEL32DLL,"bool","TerminateThread","handle",$hThread,"int",$iExitCode)
+	If @error Then Return SetError(2,@error,False)
+	If Not $aRet[0] Then Return SetError(3,0,False)	; False (failure) return
+	Return True
+EndFunc
+
+Func _ThreadCloseHandle(ByRef $hThread)
+	If Not IsPtr($hThread) Then Return SetError(1,0,False)
+	Local $aRet=DllCall($KERNEL32DLL,"bool","CloseHandle","handle",$hThread)
+	If @error Then Return SetError(2,@error,False)
+	If Not $aRet[0] Then Return SetError(3,0,False)
+	$hThread = 0	; Invalidate the handle
+	Return True
+EndFunc
