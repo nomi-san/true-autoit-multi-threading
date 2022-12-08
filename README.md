@@ -4,6 +4,9 @@
 
 :clap: All issues and pull requests are welcome! 
 
+:bell: Give a star and subscribe (watch) to get notified about changes.
+
+
 ## Usage
 
 Download the latest [release](https://github.com/nomi-san/true-autoit-multi-threading/releases) (or [build from source](#build-from-source)).
