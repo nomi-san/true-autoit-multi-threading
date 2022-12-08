@@ -1,20 +1,17 @@
-# true-autoit-multi-threading
-Yep, multi-threading in AutoIt.
+# :rainbow: True AutoIt Multi-threading
 
-<br>
+:zap: Just an experiment to achieve multi-threading in AutoIt, as a library.
 
-> All issues and pull requests are welcome!
+:clap: All issues and pull requests are welcome! 
 
-<br>
+## Usage
 
-## usage
-
-Download the latest [release](https://github.com/nomi-san/true-autoit-multi-threading/releases) (or build from source with Visual Studio C++).
+Download the latest [release](https://github.com/nomi-san/true-autoit-multi-threading/releases) (or [build from source](#build-from-source)).
 
 Library files:
 - N.au3 - AutoIt include file
-- N.dll - DLL dependency
-- N64.dll - for 64-bit AutoIt (optional if 32-bit)
+- N.dll - 32-bit DLL dependency
+- N64.dll - 64-bit DLL (optional if 32-bit only)
 
 Simple example:
 ```au3
@@ -33,11 +30,26 @@ endfunc
 NMain('main')
 ```
 
-#### See [test_1.au3](./test_1.au3) and [test_2.au3](./test_2.au3) to learn more.
-#### See [N.au3](./N.au3) to get all APIs.
+More examples:
+- [test_1.au3](./test_1.au3)
+- [test_2.au3](./test_2.au3)
 
-## warning
-This is just an experiment.
+
+See [N.au3](./N.au3) to get all APIs.
+
+## Build from source
+
+Requirements:
+- Visual Studio 2017+
+- C++ desktop development
+- Windows SDK 8.1+
+
+Build steps:
+- Open **true-autoit-multi-threading.sln**
+- Restore Nuget packages
+- Choose **CPU arch** -> x86/x64
+- Press build -> N.dll/N64.dll
+- Copy above DLLs and N.au3 to your script folder
 
 ## FAQs
 
@@ -52,9 +64,6 @@ After the first thread is created, the memory increases once ~EXE size. And +80k
 
 #### Is its shared object faster than AutoItObject?
 Yesh, it is implemented with hash table. I don't know why AutoItObject lookups property name through array sequentially.
-
-#### Why "N" library?
-It isn't someone nickname, it's just the first letter I think to.
 
 #### Is there a magic?
 Nope.
