@@ -1,46 +1,31 @@
 #include <atomic>
+#include <unordered_map>
 #include <windows.h>
 
-// Simple shared object,
-// wrapped around Crafting Interpreter hash table (http://www.craftinginterpreters.com/hash-tables.html)
-// and IDispatch interface (https://docs.microsoft.com/en-us/windows/win32/api/oaidl/nn-oaidl-idispatch).
-// Refs
+#if _DEBUG
+#include <iostream>
+#include <fstream>
+#endif
+
+// Simple shared object with hash map.
+// Refs:
 //   https://github.com/AutoItMicro/AutoItObject
-//   https://github.com/nomi-san/mp.au3/blob/8e74a590943887f1ff035dadf246674561e617f3/mp.cc#L285
-
-class Entry
-{
-public:
-    const UINT32 Key = 0;
-    const VARIANT Value = { VT_EMPTY };
-
-    ~Entry()
-    {
-        VariantClear(const_cast<VARIANT *>(&Value));
-    }
-
-    void Set(UINT32 key, const VARIANT *value)
-    {
-        const_cast<UINT &>(Key) = key;
-        VariantCopy(const_cast<VARIANT *>(&Value), value);
-    }
-
-    bool IsEmpty() const
-    {
-        return Value.vt == VT_EMPTY;
-    }
-};
+//   https://docs.microsoft.com/en-us/windows/win32/api/oaidl/nn-oaidl-idispatch
 
 class Shared : public IDispatch
 {
-    Entry *m_entries;
-    int m_count, m_capacity;
-    std::atomic<int> m_ref;
+#if _DEBUG
+    UINT32 m_id;
+#endif
 
-    static constexpr VARIANT Empty = { VT_EMPTY };
+    std::atomic<ULONG> m_ref;
+    std::unordered_map<UINT, VARIANT> m_values;
 
-    // FNV-1a 32
-    static UINT32 FnvHash(LPCWSTR key, UINT length)
+    // Empty string value.
+    static constexpr VARIANT VAL_EMPTY = { VT_EMPTY };
+
+    // FNV-1a 32-bit.
+    static UINT32 getHash(LPCWSTR key, UINT length)
     {
         UINT32 hash = 2166136261U;
 
@@ -53,26 +38,70 @@ class Shared : public IDispatch
         return hash;
     }
 
+    bool hasKey(UINT32 key)
+    {
+        return m_values.size() != 0
+            && m_values.find(key) != m_values.end();
+    }
+
+    void getValue(UINT32 key, VARIANT *value)
+    {
+        if (hasKey(key))
+        {
+            VariantCopy(value, &m_values[key]);
+        }
+        else
+        {
+            VariantCopy(value, &VAL_EMPTY);
+        }
+    }
+
+    void setValue(UINT32 key, const VARIANT *value)
+    {
+        if (hasKey(key))
+        {
+            VariantCopy(&m_values[key], value);
+        }
+        else
+        {
+            VARIANT tmp = VAL_EMPTY;
+            VariantCopy(&tmp, value);
+            m_values[key] = tmp;
+        }
+    }
+
 public:
     Shared()
     {
-        m_ref = 0;
+#if _DEBUG
+        static std::atomic<UINT32> idCount = 0;
+        m_id = ++idCount;
 
-        m_count = 0;
-        m_capacity = 0;
-        m_entries = nullptr;
+        std::ofstream myfile;
+        myfile.open("debug.log", m_id == 1 ? std::iostream::trunc : std::iostream::app);
+        myfile << "object " << m_id << " created.\n";
+        myfile.close();
+#endif
+
+        m_ref = 0;
+        m_values.clear();
     }
 
     ~Shared()
     {
-        if (m_entries != nullptr)
+        for (auto &kv : m_values)
         {
-            delete[] m_entries;
-            m_entries = nullptr;
+            VariantClear(&kv.second);
         }
 
-        m_count = 0;
-        m_capacity = 0;
+        m_values.clear();
+
+#if _DEBUG
+        std::ofstream myfile;
+        myfile.open("debug.log", std::iostream::app);
+        myfile << "object " << m_id << " destroyed.\n";
+        myfile.close();
+#endif
     }
 
     ULONG STDMETHODCALLTYPE AddRef() override
@@ -90,7 +119,8 @@ public:
             delete this;
             return 0;
         }
-        return m_ref;
+
+        return ULONG(m_ref);
     }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(const IID &riid, void **ppvObject) override
@@ -118,7 +148,7 @@ public:
 
     HRESULT STDMETHODCALLTYPE GetIDsOfNames(const IID &riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId) override
     {
-        *rgDispId = FnvHash(*rgszNames, lstrlenW(*rgszNames));
+        *rgDispId = getHash(*rgszNames, lstrlenW(*rgszNames));
         return S_OK;
     }
 
@@ -127,100 +157,16 @@ public:
     {
         if ((wFlags & DISPATCH_METHOD) || (wFlags & DISPATCH_PROPERTYGET))
         {
-            Get((UINT32)dispIdMember, pVarResult);
+            getValue((UINT32)dispIdMember, pVarResult);
             return S_OK;
         }
         else if ((wFlags & DISPATCH_PROPERTYPUT) || (wFlags & DISPATCH_PROPERTYPUTREF))
         {
-            Set((UINT32)dispIdMember, &pDispParams->rgvarg[0]);
+            setValue((UINT32)dispIdMember, &pDispParams->rgvarg[0]);
             return S_OK;
         }
 
         return DISP_E_MEMBERNOTFOUND;
-    }
-
-private:
-    void Get(UINT32 key, VARIANT *value)
-    {
-        if (m_count != 0)
-        {
-            Entry *entry = FindEntry(m_entries, m_capacity, key);
-            if (entry->Key != 0)
-            {
-                VariantCopy(value, &entry->Value);
-                return;
-            }
-        }
-
-        VariantCopy(value, &Empty);
-    }
-
-    void Set(UINT32 key, const VARIANT *value)
-    {
-        if (m_count >= m_capacity * 0.75)
-        {
-            Expand((m_capacity < 8) ? 8 : (m_capacity * 2));
-        }
-
-        Entry *entry = FindEntry(m_entries, m_capacity, key);
-
-        bool isNewKey = entry->Key == 0;
-        if (isNewKey && entry->IsEmpty())
-        {
-            m_count++;
-        }
-
-        entry->Set(key, value);
-    }
-
-    static Entry *FindEntry(Entry *entries, int capacity, UINT32 key)
-    {
-        int capMask = capacity - 1;
-        UINT32 index = key & capMask;
-        Entry *tombstone = nullptr;
-
-        for (;;)
-        {
-            Entry *entry = &entries[index];
-
-            if (entry->Key == 0)
-            {
-                if (entry->IsEmpty())
-                {
-                    return tombstone != nullptr ? tombstone : entry;
-                }
-                else
-                {
-                    if (tombstone == nullptr) tombstone = entry;
-                }
-            }
-            else if (entry->Key == key)
-            {
-                return entry;
-            }
-
-            index = (index + 1) & capMask;
-        }
-    }
-
-    void Expand(int capacity)
-    {
-        Entry *entries = new Entry[capacity];
-
-        m_count = 0;
-        for (int i = 0; i < m_capacity; i++)
-        {
-            Entry *entry = &m_entries[i];
-            if (entry->Key == 0) continue;
-
-            Entry *dest = FindEntry(entries, capacity, entry->Key);
-            dest->Set(entry->Key, &entry->Value);
-            m_count++;
-        }
-
-        this->~Shared();
-        m_capacity = capacity;
-        m_entries = entries;
     }
 };
 

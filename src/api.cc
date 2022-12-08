@@ -34,11 +34,11 @@ LPDISPATCH WINAPI NAPI_Local()
     return N_CreateShared();
 }
 
-static DWORD CALLBACK N_ThreadRoutine(Thread *thread)
+static void CALLBACK N_ThreadRoutine(Thread *thread)
 {
     // Execute main entry point.
     WinMain_t main = (WinMain_t)N_MemoryModuleGetEntryPoint(thread->module);
-    return main(GetModuleHandleA(NULL), NULL, GetCommandLineW(), 0);
+    main(GetModuleHandleA(NULL), NULL, GetCommandLineW(), 0);
 }
 
 DWORD WINAPI NAPI_Run(LPCSTR fn, LPDISPATCH local)
@@ -56,7 +56,12 @@ DWORD WINAPI NAPI_Run(LPCSTR fn, LPDISPATCH local)
     // Save local shared.
     thread->local = local;
     // Create suspended thread.
-    thread->handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)N_ThreadRoutine, (LPVOID)thread, CREATE_SUSPENDED, &id);
+    thread->handle = CreateThread(NULL, 0,
+        (LPTHREAD_START_ROUTINE)&N_ThreadRoutine, (LPVOID)thread, CREATE_SUSPENDED, &id);
+
+    // Add local object ref.
+    if (local != NULL)
+        local->AddRef();
 
     // Insert to map and resume it.
     g_threadMap[id] = thread;
@@ -97,26 +102,28 @@ LPDISPATCH WINAPI NAPI_PrepSub(LPSTR fn)
 // Called before ExitProcess fires.
 BOOL N_ShouldExit()
 {
-    // Don't exit on sub-thread.
-    if (GetCurrentThreadId() != g_mainThreadId)
-    {
-        DWORD id = GetCurrentThreadId();
-        Thread *thread = g_threadMap[id];
-        HANDLE handle = thread->handle;
+    // Exit on main thread only.
+    if (GetCurrentThreadId() == g_mainThreadId)
+        return TRUE;
 
-        // Free module.
-        MemoryFreeLibrary(thread->module);
+    DWORD id = GetCurrentThreadId();
+    Thread *thread = g_threadMap[id];
+    HANDLE handle = thread->handle;
 
-        // Remove thread from map.
-        g_threadMap[id] = nullptr;
-        delete thread;
+    // Free module.
+    MemoryFreeLibrary(thread->module);
 
-        // Should terminate this thread to prevent unexpected behavior.
-        TerminateThread(handle, 0);
-        return FALSE;
-    }
+    // Release local object.
+    if (thread->local != nullptr)
+        thread->local->Release();
 
-    return TRUE;
+    // Remove thread from map.
+    g_threadMap[id] = nullptr;
+    delete thread;
+
+    // Should terminate this thread to prevent unexpected behavior.
+    TerminateThread(handle, 0);
+    return FALSE;
 }
 
 void WINAPI NAPI_Wait(DWORD tid)
