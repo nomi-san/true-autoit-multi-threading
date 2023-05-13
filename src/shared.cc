@@ -1,4 +1,5 @@
 #include <atomic>
+#include <mutex>
 #include <unordered_map>
 #include <windows.h>
 
@@ -20,6 +21,7 @@ class Shared : public IDispatch
 
     std::atomic<ULONG> m_ref;
     std::unordered_map<UINT, VARIANT> m_values;
+    std::mutex m_mutex;
 
     // Empty string value.
     static constexpr VARIANT VAL_EMPTY = { VT_EMPTY };
@@ -58,6 +60,8 @@ class Shared : public IDispatch
 
     void setValue(UINT32 key, const VARIANT *value)
     {
+        std::lock_guard<std::mutex> lock{ m_mutex };
+
         if (hasKey(key))
         {
             VariantCopy(&m_values[key], value);
